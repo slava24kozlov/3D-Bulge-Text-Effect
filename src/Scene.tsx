@@ -1,30 +1,31 @@
-import { useRef, useMemo, useEffect, useState } from "react";
-import { useControls } from "leva";
-import { debounce } from "lodash";
+import {useRef, useMemo, useEffect, useState} from "react";
+import {useControls} from "leva";
+import {debounce} from "lodash";
 
 // 3D
 import * as THREE from "three";
-import { PointLightHelper } from "three";
-import { useFrame, useThree } from "@react-three/fiber";
-import { useHelper, Html } from "@react-three/drei";
+import {PointLight, PointLightHelper} from "three";
+import {useFrame, useThree} from "@react-three/fiber";
+import {useHelper, Html} from "@react-three/drei";
 import CustomShaderMaterial from "three-custom-shader-material";
 import vertexShader from "./shaders/vertex.glsl";
 import fragmentShader from "./shaders/fragment.glsl";
 import html2canvas from "html2canvas";
+import {CanvasTexture} from "three/src/textures/CanvasTexture";
 
 const useDomToCanvas = (domEl) => {
-  const [texture, setTexture] = useState();
+  const [texture, setTexture] = useState<CanvasTexture>();
   useEffect(() => {
     if (!domEl) return;
     const convertDomToCanvas = async () => {
-      const canvas = await html2canvas(domEl, { backgroundColor: null });
+      const canvas = await html2canvas(domEl, {backgroundColor: null});
       setTexture(new THREE.CanvasTexture(canvas));
     };
 
-    convertDomToCanvas();
+    convertDomToCanvas().catch((error) => console.error(error));
 
     const debouncedResize = debounce(() => {
-      convertDomToCanvas();
+      convertDomToCanvas().catch((error) => console.error(error));
     }, 100);
 
     window.addEventListener("resize", debouncedResize);
@@ -37,40 +38,40 @@ const useDomToCanvas = (domEl) => {
 };
 
 function Lights() {
-  const pointLightRef = useRef();
+  const pointLightRef = useRef<PointLight>(PointLight);
 
   useHelper(pointLightRef, PointLightHelper, 0.7, "cyan");
 
   const config = useControls("Lights", {
     color: "#ffffff",
-    intensity: { value: 30, min: 0, max: 5000, step: 0.01 },
-    distance: { value: 12, min: 0, max: 100, step: 0.1 },
-    decay: { value: 1, min: 0, max: 5, step: 0.1 },
-    position: { value: [2, 4, 6] },
+    intensity: {value: 30, min: 0, max: 5000, step: 0.01},
+    distance: {value: 12, min: 0, max: 100, step: 0.1},
+    decay: {value: 1, min: 0, max: 5, step: 0.1},
+    position: {value: [2, 4, 6]},
   });
   return <pointLight ref={pointLightRef} {...config} />;
 }
 
 function Scene() {
   const state = useThree();
-  const { width, height } = state.viewport;
-  const [domEl, setDomEl] = useState(null);
+  const {width, height} = state.viewport;
+  const [domEl, setDomEl] = useState<HTMLDivElement>(null);
 
-  const materialRef = useRef();
+  const materialRef = useRef<unknown>();
   const textureDOM = useDomToCanvas(domEl);
 
   const uniforms = useMemo(
     () => ({
-      uTexture: { value: textureDOM },
-      uMouse: { value: new THREE.Vector2(0, 0) },
+      uTexture: {value: textureDOM},
+      uMouse: {value: new THREE.Vector2(0, 0)},
     }),
     [textureDOM]
   );
 
-  const mouseLerped = useRef({ x: 0, y: 0 });
+  const mouseLerped = useRef({x: 0, y: 0});
 
-  useFrame((state, delta) => {
-    const mouse = state.mouse;
+  useFrame((state) => {
+    const mouse = state.pointer;
     mouseLerped.current.x = THREE.MathUtils.lerp(mouseLerped.current.x, mouse.x, 0.1);
     mouseLerped.current.y = THREE.MathUtils.lerp(mouseLerped.current.y, mouse.y, 0.1);
     materialRef.current.uniforms.uMouse.value.x = mouseLerped.current.x;
@@ -82,25 +83,25 @@ function Scene() {
       <Html zIndexRange={[-1, -10]} prepend fullscreen>
         <div ref={(el) => setDomEl(el)} className="dom-element">
           <p className="flex flex-col">
-            WHEN <br />
-            WILL <br />
-            WE <br />
-            MEET ?<br />
+            WHEN <br/>
+            WILL <br/>
+            WE <br/>
+            MEET ?<br/>
           </p>
         </div>
       </Html>
       <mesh>
-        <planeGeometry args={[width, height, 254, 254]} />
+        <planeGeometry args={[width, height, 254, 254]}/>
         <CustomShaderMaterial
           ref={materialRef}
           baseMaterial={THREE.MeshStandardMaterial}
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
+          vertexShader={vertexShader as string}
+          fragmentShader={fragmentShader as string}
           uniforms={uniforms}
           flatShading
           silent
         />
-        <Lights />
+        <Lights/>
       </mesh>
     </>
   );
